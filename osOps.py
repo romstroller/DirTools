@@ -16,28 +16,28 @@ from pathlib import Path
 class OsKit():
     ''' frequently used app-file interactions '''
     
-    def datesortFiles( self, dpath, filt=None ):
+    def datesortFiles( self, dpath, filt = None ):
         ''' dict of fname  and date modified, 
             descending by date (new first).
             and filt to filter by string'''
         
-        if filt: dirList = [ i for i in os.listdir(dpath) if filt in i ]
-        else: dirList = os.listdir(dpath)
+        if filt: dirList = [ i for i in os.listdir( dpath ) if filt in i ]
+        else: dirList = os.listdir( dpath )
         
-        fNamesDated = {}
-        for i in dirList: fNamesDated[i] = os.path.getmtime(i)
+        fNamesDated = { }
+        for i in dirList: fNamesDated[ i ] = os.path.getmtime( i )
         
         fNamesSorted = dict(
             sorted(
-                fNamesDated.items(), 
-                key=lambda item: item[1], 
-                reverse=True ))
+                fNamesDated.items(),
+                key=lambda item: item[ 1 ],
+                reverse=True ) )
         
-        fDTimeFMTD = {}
-        for i in fNamesSorted: 
-            dtString = datetime.fromtimestamp(fNamesSorted[i])
-            fmtString = dtString.strftime("%Y_%m_%d_%H_%M_%S_%f")
-            fDTimeFMTD[i] = fmtString
+        fDTimeFMTD = { }
+        for i in fNamesSorted:
+            dtString = datetime.fromtimestamp( fNamesSorted[ i ] )
+            fmtString = dtString.strftime( "%Y_%m_%d_%H_%M_%S_%f" )
+            fDTimeFMTD[ i ] = fmtString
         
         # # implement:
         # latestWithP = dirTools.datesortFiles( os.getcwd(), filt="p")
@@ -46,50 +46,48 @@ class OsKit():
         
         return fDTimeFMTD
     
-    
     def tryRename( self, curName, newName ):
         pos = 0
         while True:
-            time.sleep(1)
+            time.sleep( 1 )
             try: os.rename( curName, newName )
-            except (FileNotFoundError, PermissionError ) as e:
-                print( f"RN wait access ({type(e).__name__})\n{newName}" )
-                if pos ==10 and input("BREAK to skip") =="BREAK": 
-                    self.logDict['tmo_rename'].append(curName)
+            except (FileNotFoundError, PermissionError) as e:
+                print( f"RN wait access ({type( e ).__name__})\n{newName}" )
+                if pos == 10 and input( "BREAK to skip" ) == "BREAK":
+                    self.logDict[ 'tmo_rename' ].append( curName )
                     return False
-                pos +=1
+                pos += 1
             else: return True
-    
     
     def tryMove( self, namePath, destPath ):
         pos = 0
         while True:
-            time.sleep(1)
+            time.sleep( 1 )
             try: shutil.move( namePath, destPath )
-            except (FileNotFoundError, PermissionError ) as e:
-                print( f"Move wait access ({type(e).__name__})\n{namePath}" )
-                if pos ==10 and input("BREAK to skip") =="BREAK": 
-                    self.logDict['tmo_move'].append(namePath)
+            except (FileNotFoundError, PermissionError) as e:
+                print( f"Move wait access ({type( e ).__name__})\n{namePath}" )
+                if pos == 10 and input( "BREAK to skip" ) == "BREAK":
+                    self.logDict[ 'tmo_move' ].append( namePath )
                     return False
-                pos +=1
-            else: return True       
+                pos += 1
+            else: return True
     
-    
-    def waitRename( self, prevDirList, link, move=None ):
+    def waitRename( self, prevDirList, link, move = None ):
         ''' wait for expected new files in dir; rename and (if) move '''
         
         print( f"wait-rename for {link}" )
         while True:
-            self.randSleep(2, 3)
-            dirList = os.listdir(self.tempDL)
+            self.randSleep( 2, 3 )
+            dirList = os.listdir( self.tempDL )
             newFNames = [ i for i in dirList if i not in prevDirList ]
-            if newFNames == 0: print("await download"); continue
+            if newFNames == 0: print( "await download" ); continue
             
             downloading = False
             for fName in newFNames:
                 if ".part" in fName:
                     print( f"wait partfile {fName}" )
-                    downloading = True; break
+                    downloading = True;
+                    break
             if downloading: continue
             
             for fName in [ i for i in newFNames if ".part" not in i ]:
@@ -99,37 +97,49 @@ class OsKit():
                 
                 rn = self.tryRename( crName, nwName )
                 if not rn: return false
-                if rn and move: 
+                if rn and move:
                     mv = self.tryMove( nwName, move )
                     return True if mv else False
             return
     
-    
-    def cleanString(self, tit, prfx="", suff=None, isFile=False, stamp=False):
-        
-        if len(prfx)>0: prfx = prfx+'_'
+    def cleanString( self, tit, prfx = "", suff = None, isFile = False, stamp = False ):
+        if len( prfx ) > 0: prfx = prfx + '_'
         cleaned = f"{prfx}{self.dtStamp()}_" if stamp else prfx
-        if isFile: extPos = tit.rfind('.')
-        pos = 0    
+        if isFile: extPos = tit.rfind( '.' )
+        pos = 0
         for i in tit:
-            if isFile and pos == extPos: cleaned +=tit[pos]
-            elif re.match("[A-Za-z0-9]*$", i): cleaned +=i
-            else: cleaned +='_'
-            pos +=1
+            if isFile and pos == extPos: cleaned += tit[ pos ]
+            elif re.match( "[A-Za-z0-9]*$", i ): cleaned += i
+            else: cleaned += '_'
+            pos += 1
         if suff: cleaned += suff
         return cleaned
     
-    
     def dtStamp( self ):
         datetimenow = datetime.now()
-        return datetimenow.strftime("%y%m%d_%H%M%S%f")    
+        return datetimenow.strftime( "%y%m%d_%H%M%S%f" )
     
-    
-    def storePKL( self, item, fName, root, subdir=None  ):
+    def storePKL( self, item, fName, root=None, subdir = None ):
+        if not root: root = os.getcwd()
         if subdir: root = root + f'\\{subdir}'
-        if not os.path.exists(root): os.makedirs(root)
-        with open ( f"{root}\\{fName}.pkl", "wb") as file:
-            pickle.dump(item, file)
+        if not os.path.exists( root ): os.makedirs( root )
+        with open( (pth := f"{root}\\{fName}.pkl"), "wb" ) as file:
+            pickle.dump( item, file )
+        return pth
+        
+    def unPklData( self, *fNames ):
+        
+        pklFiles = [ fi for fi in
+            [ open( pth, 'rb' ) for pth in
+                [ list( dKey )[ 0 ] for dKey in
+                    [ self.datesortFiles( os.getcwd(), fn ) for fn in fNames
+                        ] ] ] ]
+        
+        data = { fi.name: pickle.load( fi ) for fi in pklFiles }
+        for fi in pklFiles: fi.close()
+        return data
+    
+    
     
     def getKaggleSet( self, owner, dSetTitle, keyPath = None ):
         """
@@ -168,11 +178,11 @@ class OsKit():
         
         # extract and identify datafiles
         orDataDir = f"{currWorkDir}\\data_or"
-        if not os.path.exists(orDataDir): os.makedirs(orDataDir)
+        if not os.path.exists( orDataDir ): os.makedirs( orDataDir )
         if datasetFName and Path( datasetFName ).suffix == ".zip":
-            with ZipFile( datasetFName, 'r' ) as zipF: 
-                zipF.extractall(orDataDir)
-        dataPaths = [ f"{orDataDir}\\{pth}" for pth in os.listdir(orDataDir)
+            with ZipFile( datasetFName, 'r' ) as zipF:
+                zipF.extractall( orDataDir )
+        dataPaths = [ f"{orDataDir}\\{pth}" for pth in os.listdir( orDataDir )
             if Path( pth ).suffix == ".csv" ]
         if len( dataPaths ) > 0:
             # dfOrig = 
