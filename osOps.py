@@ -119,16 +119,16 @@ class OsKit():
         datetimenow = datetime.now()
         return datetimenow.strftime( "%y%m%d_%H%M%S%f" )
     
-    def storePKL( self, item, fName, root=None, subdir = None ):
+    def storePKL( self, item, fName, stamp = False, root = None, dir = None ):
         if not root: root = os.getcwd()
-        if subdir: root = root + f'\\{subdir}'
+        if dir: root = root + f'\\{dir}'
         if not os.path.exists( root ): os.makedirs( root )
+        if stamp: fName = f"{fName}_{self.dtStamp()}"
         with open( (pth := f"{root}\\{fName}.pkl"), "wb" ) as file:
             pickle.dump( item, file )
         return pth
-        
-    def unPklData( self, *fNames ):
-        
+    
+    def unPklData( self, *fNames, dct=True ):
         pklFiles = [ fi for fi in
             [ open( pth, 'rb' ) for pth in
                 [ list( dKey )[ 0 ] for dKey in
@@ -137,9 +137,7 @@ class OsKit():
         
         data = { fi.name: pickle.load( fi ) for fi in pklFiles }
         for fi in pklFiles: fi.close()
-        return data
-    
-    
+        return data if dct else [ data[fi.name] for fi in pklFiles ]
     
     def getKaggleSet( self, owner, dSetTitle, keyPath = None ):
         """
