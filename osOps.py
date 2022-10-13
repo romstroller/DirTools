@@ -128,7 +128,7 @@ class OsKit():
             pickle.dump( item, file )
         return pth
     
-    def unPklData( self, *fNames, dct=True ):
+    def unPklData( self, *fNames, dct = True ):
         pklFiles = [ fi for fi in
             [ open( pth, 'rb' ) for pth in
                 [ list( dKey )[ 0 ] for dKey in
@@ -137,53 +137,47 @@ class OsKit():
         
         data = { fi.name: pickle.load( fi ) for fi in pklFiles }
         for fi in pklFiles: fi.close()
-        return data if dct else [ data[fi.name] for fi in pklFiles ]
+        return data if dct else [ data[ fi.name ] for fi in pklFiles ]
     
     def getKaggleSet( self, owner, dSetTitle, keyPath = None ):
         """
         Authenticate with Kaggle, download datasete and load to Pandas
         Authentication looks for your Kaggle key file at the defined path
-        implement eg: 
-            df = getKaggleSet( 'osmi', 'mental-health-in-tech-2016' )
         """
         
-        # authenticate with API
+        def download():
+            if not keyPath: keyPath = f"{userDir}\\PYC\\_ADMIN\\kaggle.json"
+            with open( keyPath, 'r' ) as f: keyDict = json.load( f )
+            userTitle, keyTitle = keyDict.keys()
+            os.environ[ 'KAGGLE_USERNAME' ] = keyDict[ userTitle ]
+            os.environ[ 'KAGGLE_KEY' ] = keyDict[ keyTitle ]
+            api = KaggleApi()
+            api.authenticate()
+            api.dataset_download_files( f'{owner}/{dSetTitle}', path="." )
+            return True
+        
+        downloadStarted = False
         currWorkDir = os.getcwd()
         userDir = Path.home()
-        if not keyPath: keyPath = f"{userDir}\\PYC\\_ADMIN\\kaggle.json"
+        dataFname = None
         
-        with open( keyPath, 'r' ) as f: keyDict = json.load( f )
-        userTitle, keyTitle = keyDict.keys()
-        os.environ[ 'KAGGLE_USERNAME' ] = keyDict[ userTitle ]
-        os.environ[ 'KAGGLE_KEY' ] = keyDict[ keyTitle ]
-        api = KaggleApi()
-        api.authenticate()
-        
-        # retrieve dataset
-        api.dataset_download_files( f'{owner}/{dSetTitle}', path="." )
-        
-        # await download
-        
-        datasetFName = None
-        print( "Waiting for dataset download" )
-        while True:
-            time.sleep( 1 )
+        while not dataFname:
             sortedFs = self.datesortFiles( currWorkDir, dSetTitle )
-            if len( sortedFs ) == 0: continue
-            datasetFName = list( sortedFs )[ 0 ]
-            print( f"Latest: {datasetFName}" )
-            break
+            if len( sortedFs ) == 0:
+                if not downloadStarted: downloadStarted = download()
+                else: print( f"- [{self.dtStamp()}] Await Kaggle API request" )
+                time.sleep( 1 )
+            else:
+                dataFname, dated = list( sortedFs.items() )[ 0 ]
+                print( f"- [{self.dtStamp()}] Got '{dataFname}', {dated=}" )
         
         # extract and identify datafiles
-        orDataDir = f"{currWorkDir}\\data_or"
-        if not os.path.exists( orDataDir ): os.makedirs( orDataDir )
-        if datasetFName and Path( datasetFName ).suffix == ".zip":
-            with ZipFile( datasetFName, 'r' ) as zipF:
-                zipF.extractall( orDataDir )
-        dataPaths = [ f"{orDataDir}\\{pth}" for pth in os.listdir( orDataDir )
+        datDir = f"{currWorkDir}\\data_or"
+        if not os.path.exists( datDir ): os.makedirs( datDir )
+        if dataFname and Path( dataFname ).suffix == ".zip":
+            with ZipFile( dataFname, 'r' ) as zipf: zipf.extractall( datDir )
+        dataPaths = [ f"{datDir}\\{pth}" for pth in os.listdir( datDir )
             if Path( pth ).suffix == ".csv" ]
-        if len( dataPaths ) > 0:
-            # dfOrig = 
-            print( "Got DF from extracted dSet at:\n", dataPaths[ 0 ] )
-            return pd.read_csv( [ pth for pth in dataPaths ][ 0 ] )
-        else: print( "Failed get CSV" ); return None
+        
+        return (pd.read_csv( [ pth for pth in dataPaths ][ 0 ] )
+                if len( dataPaths ) > 0 else None)
