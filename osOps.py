@@ -139,6 +139,40 @@ class OsKit():
         for fi in pklFiles: fi.close()
         return data if dct else [ data[ fi.name ] for fi in pklFiles ]
     
+    def setCWDtoFile( self ):
+        os.chdir( os.path.dirname( os.path.abspath( __file__ ) ) )
+    
+    def getDirTreeDict( self, _root = None ):
+        
+        os.chdir( ( os.path.dirname( os.path.abspath( __file__ )) )
+            if not _root else _root )
+
+        # get all paths and files-at-path in dict
+        rootWalk = { path : { "folds" : sDirs, "files" : files }
+            for path, sDirs, files in os.walk(".") }
+
+        dirTree = { }
+        for path, items in rootWalk.items():
+            
+            # get path as sequence of directories
+            sDirs = [ sDir.strip(os.sep) for sDir in path.split(os.sep) ]
+            node = dirTree  # restart at root
+            
+            while len(sDirs) > 0:
+                
+                sDir = sDirs.pop( 0 )  # take leftmost dir in path
+                # if not "sDirs", create and add empty subDict
+                if not node.get( "folds" ): node.update( 
+                    { "folds" : { sDir : {} } } )
+                else:  # if not sDict, create
+                    if not node["folds"].get(sDir):
+                        node["folds"].update( { sDir : {} } )
+                node = node[ "folds" ][ sDir ]  # move to branch
+                
+            node.update( { "files": items["files"] } )  # add files end sDirseq
+            
+        return dirTree, rootWalk
+    
     def getKaggleSet( self, owner, dSetTitle, keyPath = None ):
         """
         Authenticate with Kaggle, download datasete and load to Pandas
@@ -169,7 +203,8 @@ class OsKit():
                 time.sleep( 1 )
             else:
                 dataFname, dated = list( sortedFs.items() )[ 0 ]
-                print( f"- [{self.dtStamp()}] Got '{dataFname}', {dated=}" )
+                print( f"- [{(st := self.dtStamp())}] Got '{dataFname}'\n"
+                       f"{' ' * (len( st ) + 5)}{dated=}" )
         
         # extract and identify datafiles
         datDir = f"{currWorkDir}\\data_or"
