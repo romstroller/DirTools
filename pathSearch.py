@@ -11,11 +11,11 @@ def getPattern( _inp):
     if not inSplit: return _inp  # in case a file is named only with seps ?
     
     patt = inSplit.pop(0)
-    # prefix segment with "not slash". use an "any (.)" to match whole path
+    # prefix middle segments with "0+ any"
     while len(inSplit)>1:
-        if len(p:= inSplit.pop(0) )>0: patt+= f".*{p}"
+        if len(p:= inSplit.pop(0) )>0: patt+= f".*{p}"  # alt: [^\\]*
     
-    if inSplit: patt+= r"[^\\]*" + inSplit.pop(0)
+    if inSplit: patt+= r".*" + inSplit.pop(0)  # alt: [^\\]*
     
     return re.compile(patt)
 
