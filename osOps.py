@@ -204,7 +204,7 @@ class OsKit():
             else:
                 dataFname, dated = list( sortedFs.items() )[ 0 ]
                 print( f"- [{(st := self.dtStamp())}] Got '{dataFname}'\n"
-                       f"{' ' * (len( st ) + 5)}{dated=}" )
+                       f"{' ' * (len( st ) + 5)}Dated: {dated}" )
         
         # extract and identify datafiles
         datDir = f"{currWorkDir}\\data_or"
