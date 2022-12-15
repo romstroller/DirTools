@@ -4,16 +4,17 @@ import json
 import time
 import shutil
 import pickle
+import inspect
 import pandas as pd
 from datetime import datetime
 
-# for kaggle authenticate
-from kaggle.api.kaggle_api_extended import KaggleApi
-from zipfile import ZipFile
-from pathlib import Path
+# # for kaggle authenticate
+# from kaggle.api.kaggle_api_extended import KaggleApi
+# from zipfile import ZipFile
+# from pathlib import Path
 
 
-class OsKit():
+class Ops():
     ''' frequently used app-file interactions '''
     
     def datesortFiles( self, dpath, filt = None ):
@@ -102,7 +103,8 @@ class OsKit():
                     return True if mv else False
             return
     
-    def cleanString( self, tit, prfx = "", suff = None, isFile = False, stamp = False ):
+    def cleanString( self, tit, prfx = "", suff = None, isFile = False, 
+        stamp = False ):
         if len( prfx ) > 0: prfx = prfx + '_'
         cleaned = f"{prfx}{self.dtStamp()}_" if stamp else prfx
         if isFile: extPos = tit.rfind( '.' )
@@ -119,20 +121,19 @@ class OsKit():
         datetimenow = datetime.now()
         return datetimenow.strftime( "%y%m%d_%H%M%S%f" )
     
-    def storePKL( self, item, fName, stamp = False, root = None, dir = None ):
-        if not root: root = os.getcwd()
-        if dir: root = root + f'\\{dir}'
-        if not os.path.exists( root ): os.makedirs( root )
+    def storePKL( self, item, fName, loc, stamp=True, subd=None ):
+        if subd: loc = loc + f'\\{subd}'
+        if not os.path.exists( loc ): os.makedirs( loc )
         if stamp: fName = f"{fName}_{self.dtStamp()}"
-        with open( (pth := f"{root}\\{fName}.pkl"), "wb" ) as file:
+        with open( (pth := f"{loc}\\{fName}.pkl"), "wb" ) as file:
             pickle.dump( item, file )
         return pth
     
-    def unPklData( self, *fNames, dct = True ):
+    def unPklData( self, loc, *fNames, dct = True ):
         pklFiles = [ fi for fi in
             [ open( pth, 'rb' ) for pth in
                 [ list( dKey )[ 0 ] for dKey in
-                    [ self.datesortFiles( os.getcwd(), fn ) for fn in fNames
+                    [ self.datesortFiles( loc, fn ) for fn in fNames
                         ] ] ] ]
         
         data = { fi.name: pickle.load( fi ) for fi in pklFiles }
@@ -173,46 +174,46 @@ class OsKit():
             
         return dirTree, rootWalk
     
-    def getKaggleSet( self, owner, dSetTitle, keyPath = None ):
-        """
-        Authenticate with Kaggle, download datasete and load to Pandas
-        Authentication looks for your Kaggle key file at the defined path
-        """
+    # def getKaggleSet( self, owner, dSetTitle, keyPath = None ):
+        # """
+        # Authenticate with Kaggle, download datasete and load to Pandas
+        # Authentication looks for your Kaggle key file at the defined path
+        # """
         
-        def download():
-            if not keyPath: keyPath = f"{userDir}\\PYC\\_ADMIN\\kaggle.json"
-            with open( keyPath, 'r' ) as f: keyDict = json.load( f )
-            userTitle, keyTitle = keyDict.keys()
-            os.environ[ 'KAGGLE_USERNAME' ] = keyDict[ userTitle ]
-            os.environ[ 'KAGGLE_KEY' ] = keyDict[ keyTitle ]
-            api = KaggleApi()
-            api.authenticate()
-            api.dataset_download_files( f'{owner}/{dSetTitle}', path="." )
-            return True
+        # def download():
+            # if not keyPath: keyPath = f"{userDir}\\PYC\\_ADMIN\\kaggle.json"
+            # with open( keyPath, 'r' ) as f: keyDict = json.load( f )
+            # userTitle, keyTitle = keyDict.keys()
+            # os.environ[ 'KAGGLE_USERNAME' ] = keyDict[ userTitle ]
+            # os.environ[ 'KAGGLE_KEY' ] = keyDict[ keyTitle ]
+            # api = KaggleApi()
+            # api.authenticate()
+            # api.dataset_download_files( f'{owner}/{dSetTitle}', path="." )
+            # return True
         
-        downloadStarted = False
-        currWorkDir = os.getcwd()
-        userDir = Path.home()
-        dataFname = None
+        # downloadStarted = False
+        # currWorkDir = os.getcwd()
+        # userDir = Path.home()
+        # dataFname = None
         
-        while not dataFname:
-            sortedFs = self.datesortFiles( currWorkDir, dSetTitle )
-            if len( sortedFs ) == 0:
-                if not downloadStarted: downloadStarted = download()
-                else: print( f"- [{self.dtStamp()}] Await Kaggle API request" )
-                time.sleep( 1 )
-            else:
-                dataFname, dated = list( sortedFs.items() )[ 0 ]
-                print( f"- [{(st := self.dtStamp())}] Got '{dataFname}'\n"
-                       f"{' ' * (len( st ) + 5)}Dated: {dated}" )
+        # while not dataFname:
+            # sortedFs = self.datesortFiles( currWorkDir, dSetTitle )
+            # if len( sortedFs ) == 0:
+                # if not downloadStarted: downloadStarted = download()
+                # else: print( f"- [{self.dtStamp()}] Await Kaggle API request" )
+                # time.sleep( 1 )
+            # else:
+                # dataFname, dated = list( sortedFs.items() )[ 0 ]
+                # print( f"- [{(st := self.dtStamp())}] Got '{dataFname}'\n"
+                       # f"{' ' * (len( st ) + 5)}Dated: {dated}" )
         
-        # extract and identify datafiles
-        datDir = f"{currWorkDir}\\data_or"
-        if not os.path.exists( datDir ): os.makedirs( datDir )
-        if dataFname and Path( dataFname ).suffix == ".zip":
-            with ZipFile( dataFname, 'r' ) as zipf: zipf.extractall( datDir )
-        dataPaths = [ f"{datDir}\\{pth}" for pth in os.listdir( datDir )
-            if Path( pth ).suffix == ".csv" ]
+        # # extract and identify datafiles
+        # datDir = f"{currWorkDir}\\data_or"
+        # if not os.path.exists( datDir ): os.makedirs( datDir )
+        # if dataFname and Path( dataFname ).suffix == ".zip":
+            # with ZipFile( dataFname, 'r' ) as zipf: zipf.extractall( datDir )
+        # dataPaths = [ f"{datDir}\\{pth}" for pth in os.listdir( datDir )
+            # if Path( pth ).suffix == ".csv" ]
         
-        return (pd.read_csv( [ pth for pth in dataPaths ][ 0 ] )
-                if len( dataPaths ) > 0 else None)
+        # return (pd.read_csv( [ pth for pth in dataPaths ][ 0 ] )
+                # if len( dataPaths ) > 0 else None)
