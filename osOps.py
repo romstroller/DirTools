@@ -17,35 +17,31 @@ from datetime import datetime
 class Ops():
     ''' frequently used app-file interactions '''
     
-    def datesortFiles( self, dpath, filt = None ):
-        ''' dict of fname  and date modified, 
-            descending by date (new first).
-            and filt to filter by string'''
+    def datesortFiles( self, pth, filt = None, starts = True ):
+        ''' list of fname and date modified, ordered by last modified.
+            if filt, must contain filt; if startswith, must start with filt. '''
         
-        if filt: dirList = [ i for i in os.listdir( dpath ) if filt in i ]
-        else: dirList = os.listdir( dpath )
+        if starts: fNs = [ n for n in os.listdir( pth ) if n.startswith(filt) ]
+        elif filt: fNs = [ n for n in os.listdir( pth ) if n == filt ]
+        else: fNs = os.listdir( pth )
         
-        fNamesDated = { }
-        for i in dirList: fNamesDated[ i ] = os.path.getmtime( i )
+        fNamesDated = [ 
+            ( n, datetime.fromtimestamp( os.path.getmtime( n ) ) )
+            for n in fNs 
+            ]
         
-        fNamesSorted = dict(
-            sorted(
-                fNamesDated.items(),
-                key=lambda item: item[ 1 ],
-                reverse=True ) )
+        fNamesSortd = sorted(
+            fNamesDated,
+            key = lambda item: item[ 1 ],
+            reverse=True 
+            )
+            
+        fNDateFrmtd = [
+            ( n, tStr.strftime( "%y%m%d_%H%M%S%f" ) )
+            for n, tStr in fNamesSortd
+            ]
         
-        fDTimeFMTD = { }
-        for i in fNamesSorted:
-            dtString = datetime.fromtimestamp( fNamesSorted[ i ] )
-            fmtString = dtString.strftime( "%Y_%m_%d_%H_%M_%S_%f" )
-            fDTimeFMTD[ i ] = fmtString
-        
-        # # implement:
-        # latestWithP = dirTools.datesortFiles( os.getcwd(), filt="p")
-        # for i in latestWithP: print( f"{latestWithP[i]}: {i}" )
-        # list(latestWithP)[0]  # most recent with filter
-        
-        return fDTimeFMTD
+        return fNDateFrmtd
     
     def tryRename( self, curName, newName ):
         pos = 0
@@ -129,16 +125,16 @@ class Ops():
             pickle.dump( item, file )
         return pth
     
-    def unPklData( self, loc, *fNames, dct = True ):
-        pklFiles = [ fi for fi in
-            [ open( pth, 'rb' ) for pth in
-                [ list( dKey )[ 0 ] for dKey in
-                    [ self.datesortFiles( loc, fn ) for fn in fNames
-                        ] ] ] ]
+    def unPklData( self, loc, fName, latest = True ):
         
-        data = { fi.name: pickle.load( fi ) for fi in pklFiles }
-        for fi in pklFiles: fi.close()
-        return data if dct else [ data[ fi.name ] for fi in pklFiles ]
+        filesByLatest = [ open( fpth, 'rb' ) 
+            for fpth, _ in self.datesortFiles( loc, fName ) 
+            if fpth.endswith('.pkl')
+            ]
+        
+        try: return ( pickle.load( filesByLatest[0] ) if latest 
+            else { fObj.name: pickle.load( fObj ) for fObj in filesByLatest } )
+        finally: [ fi.close() for fi in filesByLatest ]
     
     def setCWDtoFile( self ):
         os.chdir( os.path.dirname( os.path.abspath( __file__ ) ) )
